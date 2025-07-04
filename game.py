@@ -306,7 +306,21 @@ def update_game():
                 if player.velocity_x != 0 or enemy.velocity_x != 0:
                     player_is_hurt = True
 
-    if enemies_stomped:# Play music if enabled
+    if enemies_stomped:
+        for enemy in enemies_stomped:
+            if enemy in enemies:
+                enemy.die()
+                enemies.remove(enemy)
+                score += 1
+        player.velocity_y = JUMP_FORCE * 0.6 
+    
+    elif player_is_hurt:
+        player.die()
+        music.stop()
+        game_state = 'menu'
+        menu_message = "Try Again!"
+
+    level_won = False
     if total_coins_in_level > 0 and len(coins) == 0:
         level_won = True
     elif total_enemies_in_level > 0 and len(enemies) == 0:
