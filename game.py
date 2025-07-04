@@ -64,7 +64,7 @@ class Character:
         self.actor = Actor(self.anim_manager.update('idle'), pos=pos)
         self.hitbox = self.actor.copy()
         self.hitbox.inflate_ip(-20, -10)
-        self.hitbox_offset_y = 8
+        self.hitbox_offset_y = 5
         self.speed = speed
         self.velocity_x = 0
         self.velocity_y = 0
@@ -148,7 +148,7 @@ class Coin:
         self.actor.image = new_image
 
 
-player = Character(sprite_prefix='player', pos=(WIDTH / 2, HEIGHT / 2), speed=PLAYER_SPEED, active=True, type='player')
+player = Character(sprite_prefix='player', pos=(WIDTH / 2, 0), speed=PLAYER_SPEED, active=True, type='player')
 platforms = []
 enemies = []
 ground_start_x = 0
@@ -161,19 +161,26 @@ def generate_level():
     total_coins_in_level = 0
     total_enemies_in_level = 0 
     
-    ground_middle_sprite = 'terrain_sand_block_top'; ground_block_width = Actor(ground_middle_sprite).width
+    ground_middle_sprite = 'terrain_sand_block_top'
+    ground_block_width = Actor(ground_middle_sprite).width
     num_ground_platforms = (WIDTH * 4) // ground_block_width 
     for i in range(num_ground_platforms):
         pos_x = i * ground_block_width - (WIDTH * 1.5) 
         pos_y = HEIGHT - 20
-        ground_platform = Actor(ground_middle_sprite, (pos_x, pos_y)); platforms.append(ground_platform)
+        ground_platform = Actor(ground_middle_sprite, (pos_x, pos_y))
+        platforms.append(ground_platform)
     
-    ground_start_x = platforms[0].left; ground_end_x = platforms[-1].right
-    num_clusters = 30; horizontal_padding = 1.8 * player.actor.width; vertical_padding = 2 * player.actor.height
-    brick_platform_width = Actor('bricks_brown').width; brick_platform_height = Actor('bricks_brown').height
+    ground_start_x = platforms[0].left
+    ground_end_x = platforms[-1].right
+
+    
+    safe_zone_radius = WIDTH / 2     
+    num_clusters = 30
+    horizontal_padding = 1.8 * player.actor.width
+    vertical_padding = 2 * player.actor.height
+    brick_platform_width = Actor('bricks_brown').width
+    brick_platform_height = Actor('bricks_brown').height
     generated_cluster_rects = []
-    player_start_pos = (WIDTH / 4, HEIGHT / 2)
-    safe_zone_radius = (WIDTH / 2) *3
 
     for _ in range(num_clusters):
         attempts = 0
@@ -182,41 +189,62 @@ def generate_level():
             total_cluster_width = platforms_in_cluster * brick_platform_width
             candidate_x_start = random.uniform(ground_start_x, ground_end_x - total_cluster_width)
             candidate_y_center = (HEIGHT - 20) - random.uniform(player.actor.height * 1.5, player.actor.height * 4)
-            if candidate_y_center < 100: candidate_y_center = 100
+            if candidate_y_center < 100:
+                candidate_y_center = 100
+
             candidate_rect = Rect((candidate_x_start, candidate_y_center - brick_platform_height / 2), (total_cluster_width, brick_platform_height))
             candidate_rect_with_padding = candidate_rect.inflate(horizontal_padding, vertical_padding)
             is_position_valid = True
             for existing_rect in generated_cluster_rects:
-                if candidate_rect_with_padding.colliderect(existing_rect): is_position_valid = False; break 
-            if is_position_valid: break 
+                if candidate_rect_with_padding.colliderect(existing_rect):
+                    is_position_valid = False
+                    break 
+            if is_position_valid:
+                break 
             attempts += 1
+        
         if attempts < 100:
             platforms_in_this_cluster = []
             for i in range(platforms_in_cluster):
                 pos_x = candidate_rect.left + (brick_platform_width / 2) + (i * brick_platform_width)
-                platform = Actor('bricks_brown', pos=(pos_x, candidate_rect.centery)); platforms.append(platform); platforms_in_this_cluster.append(platform)
+                platform = Actor('bricks_brown', pos=(pos_x, candidate_rect.centery))
+                platforms.append(platform)
+                platforms_in_this_cluster.append(platform)
+            
             generated_cluster_rects.append(candidate_rect)
             if random.random() < 0.8 and platforms_in_this_cluster:
                 chosen_platform = random.choice(platforms_in_this_cluster)
-                distance_from_start = abs(chosen_platform.x - player_start_pos[0])
+                
+                distance_from_start = abs(chosen_platform.x - player.actor.x)*1.5
                 if distance_from_start > safe_zone_radius:
                     enemy = Character(sprite_prefix='zombie', pos=(chosen_platform.x, chosen_platform.top - 20), speed=2, active=False, type='enemy')
                     enemies.append(enemy)
                     total_enemies_in_level += 1 
+
             for p in platforms_in_this_cluster:
                 if random.random() < 0.5:
-                    coin = Coin(pos=(p.x, p.top - 20)); coins.append(coin)
+                    coin = Coin(pos=(p.x, p.top - 20))
+                    coins.append(coin)
                     total_coins_in_level += 1
 
-
 def reset_game():
+    """ Resets the player state and generates a new level. """
     global score, menu_message
-    score = 0; menu_message = "My Platformer Game"
-    player_start_pos = (WIDTH / 4, HEIGHT / 2)
-    player.actor.pos = player_start_pos
-    player.velocity_x = 0; player.velocity_y = 0; player.can_jump = False
+    score = 0
+    menu_message = "My Platformer Game"
+    player.actor.pos = (WIDTH / 4, 0)
+    player.actor.top = 0 
+    player.velocity_x = 0
+    player.velocity_y = 0
+    player.can_jump = False
+    player.hitbox.center = player.actor.center
+    
+    # Now generate the level around the player's new position
     generate_level()
-    if sound_enabled: music.play('environment_song.wav')
+    
+    # Play music if enabled
+    if sound_enabled:
+        music.play('environment_song.wav')
 
 def on_music_end():
     if sound_enabled and game_state == 'playing': music.play('environment_song.wav')
