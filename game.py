@@ -154,7 +154,6 @@ enemies = []
 ground_start_x = 0
 ground_end_x = 0
 
-
 def generate_level():
     global platforms, enemies, coins, ground_start_x, ground_end_x, total_coins_in_level, total_enemies_in_level
     platforms.clear(); enemies.clear(); coins.clear()
@@ -214,7 +213,6 @@ def generate_level():
             generated_cluster_rects.append(candidate_rect)
             if random.random() < 0.8 and platforms_in_this_cluster:
                 chosen_platform = random.choice(platforms_in_this_cluster)
-                
                 distance_from_start = abs(chosen_platform.x - player.actor.x)*1.5
                 if distance_from_start > safe_zone_radius:
                     enemy = Character(sprite_prefix='zombie', pos=(chosen_platform.x, chosen_platform.top - 20), speed=2, active=False, type='enemy')
@@ -239,10 +237,8 @@ def reset_game():
     player.can_jump = False
     player.hitbox.center = player.actor.center
     
-    # Now generate the level around the player's new position
     generate_level()
     
-    # Play music if enabled
     if sound_enabled:
         music.play('environment_song.wav')
 
@@ -310,21 +306,7 @@ def update_game():
                 if player.velocity_x != 0 or enemy.velocity_x != 0:
                     player_is_hurt = True
 
-    if enemies_stomped:
-        for enemy in enemies_stomped:
-            if enemy in enemies:
-                enemy.die()
-                enemies.remove(enemy)
-                score += 1
-        player.velocity_y = JUMP_FORCE * 0.6 
-    
-    elif player_is_hurt:
-        player.die()
-        music.stop()
-        game_state = 'menu'
-        menu_message = "Try Again!"
-
-    level_won = False
+    if enemies_stomped:# Play music if enabled
     if total_coins_in_level > 0 and len(coins) == 0:
         level_won = True
     elif total_enemies_in_level > 0 and len(enemies) == 0:
